@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📖 Book Scanner Result"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/purple_700"
+            android:gravity="center"
+            android:layout_marginBottom="20dp"/>
+
+        <!-- ISBN Display -->
+        <TextView
+            android:id="@+id/textViewIsbn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ISBN: 978-3-16-148410-0"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            android:gravity="center"
+            android:layout_marginBottom="20dp"
+            android:padding="12dp"
+            android:background="@drawable/edittext_background"/>
+
+        <!-- Book Info Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/edittext_background"
+            android:padding="16dp"
+            android:layout_marginBottom="20dp">
+
+            <TextView
+                android:id="@+id/textViewTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Book Title Here"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@color/black"
+                android:gravity="center"
+                android:layout_marginBottom="16dp"/>
+
+            <TextView
+                android:id="@+id/textViewAuthor"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Author: John Doe"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:id="@+id/textViewPublisher"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Publisher: Example Publishing"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:id="@+id/textViewYear"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Year: 2023"
+                    android:textSize="14sp"/>
+
+                <TextView
+                    android:id="@+id/textViewGenre"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Genre: Fiction"
+                    android:textSize="14sp"
+                    android:gravity="end"/>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/textViewPrice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Price: RM 49.90"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/teal_700"
+                android:gravity="center"
+                android:layout_marginVertical="8dp"/>
+
+            <!-- Description -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Description:"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:id="@+id/textViewDescription"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Book description will appear here. This is a sample description of the book."
+                android:textSize="13sp"
+                android:lineSpacingExtra="4dp"/>
+        </LinearLayout>
+
+        <!-- Action Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="8dp">
+
+            <!-- Search Online Button -->
+            <Button
+                android:id="@+id/buttonSearchOnline"
+                android:layout_width="match_parent"
+                android:layout_height="55dp"
+                android:text="🌐 Search Online"
+                android:textSize="16sp"
+                android:textAllCaps="false"
+                android:backgroundTint="@color/purple_500"
+                android:textColor="@color/white"
+                android:layout_marginBottom="12dp"
+                android:enabled="false"/>
+
+            <!-- Add to Database Button -->
+            <Button
+                android:id="@+id/buttonAddToDatabase"
+                android:layout_width="match_parent"
+                android:layout_height="55dp"
+                android:text="➕ Add to Database"
+                android:textSize="16sp"
+                android:textAllCaps="false"
+                android:background="@drawable/edittext_background"
+                android:textColor="@color/white"
+                android:layout_marginBottom="12dp"
+                android:visibility="gone"/>
+
+            <!-- Back Button -->
+            <Button
+                android:id="@+id/buttonBack"
+                android:layout_width="match_parent"
+                android:layout_height="55dp"
+                android:text="← Back to Scanner"
+                android:textSize="16sp"
+                android:textAllCaps="false"
+                android:background="@drawable/edittext_background"
+                android:textColor="@color/white"/>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

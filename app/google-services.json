@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "157572464018",
+    "project_id": "bookstorefinder-82979",
+    "storage_bucket": "bookstorefinder-82979.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:157572464018:android:b5ce43faf0bfc8e2e4554b",
+        "android_client_info": {
+          "package_name": "com.example.bookstorefinder"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGu1RgIosS83fnPk6K8gu6ISx0jaiYlgY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

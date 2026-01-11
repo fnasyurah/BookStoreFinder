@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📝 Post a Review"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/purple_700"
+            android:gravity="center"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- Camera Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📷 Take a Photo"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp"/>
+
+        <Button
+            android:id="@+id/btnTakePhoto"
+            android:layout_width="match_parent"
+            android:layout_height="55dp"
+            android:text="📸 OPEN CAMERA"
+            android:textSize="16sp"
+            android:backgroundTint="@color/teal_700"
+            android:textColor="@color/white"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Image Preview -->
+        <TextView
+            android:id="@+id/textViewPreviewLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Photo Preview (Take a photo first)"
+            android:textSize="14sp"
+            android:layout_marginBottom="8dp"/>
+
+        <ImageView
+            android:id="@+id/imageViewPreview"
+            android:layout_width="match_parent"
+            android:layout_height="250dp"
+            android:layout_marginBottom="24dp"
+            android:scaleType="centerCrop"
+            android:background="@color/white"
+            android:contentDescription="Photo preview"
+            android:visibility="gone"/>
+
+        <!-- Bookstore Input -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🏪 Bookstore Name"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <EditText
+            android:id="@+id/editTextBookstore"
+            android:layout_width="match_parent"
+            android:layout_height="55dp"
+            android:padding="12dp"
+            android:background="@drawable/edittext_background"
+            android:hint="Enter bookstore name"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Rating -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⭐ Rating"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <RatingBar
+            android:id="@+id/ratingBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:numStars="5"
+            android:stepSize="0.5"
+            android:rating="3"
+            android:layout_gravity="center"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Review Text -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="💬 Your Review"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <EditText
+            android:id="@+id/editTextReview"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:padding="12dp"
+            android:background="@drawable/edittext_background"
+            android:hint="Share your experience..."
+            android:gravity="top"
+            android:inputType="textMultiLine"
+            android:maxLines="5"
+            android:layout_marginBottom="32dp"/>
+
+        <!-- Post Button -->
+        <Button
+            android:id="@+id/btnPostReview"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="POST REVIEW"
+            android:textSize="18sp"
+            android:backgroundTint="@color/purple_500"
+            android:textColor="@color/white"
+            android:enabled="false"/>
+    </LinearLayout>
+</ScrollView>
