@@ -1,7 +1,6 @@
 package com.example.bookstorefinder;
 
 import android.content.Context;
-
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -18,11 +17,12 @@ public class Review {
     private float rating;
     private long timestamp;
 
-    // Empty constructor for Firebase
+    // Empty constructor for Firebase (REQUIRED)
     public Review() {
+        // Firebase needs this empty constructor
     }
 
-    // Constructor
+    // Full constructor
     public Review(String id, String userId, String userEmail, String bookstoreId,
                   String bookstoreName, String reviewText, String imageUrl,
                   float rating, long timestamp) {
@@ -37,7 +37,7 @@ public class Review {
         this.timestamp = timestamp;
     }
 
-    // Getters and Setters
+    // Getters and Setters (ALL REQUIRED for Firebase)
     public String getId() {
         return id;
     }
@@ -112,6 +112,9 @@ public class Review {
 
     // Helper method to format date
     public String getFormattedDate() {
+        if (timestamp == 0) {
+            return "Just now";
+        }
         SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault());
         return sdf.format(new Date(timestamp));
     }
@@ -119,19 +122,24 @@ public class Review {
     // Helper method to get rating stars
     public String getRatingStars() {
         StringBuilder stars = new StringBuilder();
-        for (int i = 1; i <= 5; i++) {
-            if (i <= rating) {
-                stars.append("★");
-            } else {
-                stars.append("☆");
-            }
+        int fullStars = (int) rating;
+        boolean halfStar = (rating - fullStars) >= 0.5f;
+
+        for (int i = 0; i < fullStars; i++) {
+            stars.append("★");
+        }
+        if (halfStar) {
+            stars.append("½");
+        }
+        for (int i = stars.length(); i < 5; i++) {
+            stars.append("☆");
         }
         return stars.toString();
     }
-    // In Review.java class, add this method:
+
+    // Get local image path
     public String getLocalImagePath(Context context) {
-        if (imageUrl != null && !imageUrl.isEmpty()) {
-            // Assuming imageUrl is just a filename
+        if (imageUrl != null && !imageUrl.isEmpty() && !imageUrl.equals("null")) {
             File storageDir = new File(context.getFilesDir(), "review_images");
             File imageFile = new File(storageDir, imageUrl);
             return imageFile.exists() ? imageFile.getAbsolutePath() : null;

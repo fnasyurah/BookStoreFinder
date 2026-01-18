@@ -92,35 +92,25 @@
                     android:layout_weight="1"
                     android:text="Genre: Fiction"
                     android:textSize="14sp"
-                    android:gravity="end"/>
+                    android:gravity="end"
+                    android:visibility="gone"/>
             </LinearLayout>
-
-            <TextView
-                android:id="@+id/textViewPrice"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Price: RM 49.90"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="@color/teal_700"
-                android:gravity="center"
-                android:layout_marginVertical="8dp"/>
 
             <!-- Description -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Description:"
+                android:text="Summary:"
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:layout_marginTop="12dp"
                 android:layout_marginBottom="4dp"/>
 
             <TextView
-                android:id="@+id/textViewDescription"
+                android:id="@+id/textViewSummary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Book description will appear here. This is a sample description of the book."
+                android:text="Book summary will appear here. This is a sample description of the book."
                 android:textSize="13sp"
                 android:lineSpacingExtra="4dp"/>
         </LinearLayout>
@@ -144,19 +134,6 @@
                 android:textColor="@color/white"
                 android:layout_marginBottom="12dp"
                 android:enabled="false"/>
-
-            <!-- Add to Database Button -->
-            <Button
-                android:id="@+id/buttonAddToDatabase"
-                android:layout_width="match_parent"
-                android:layout_height="55dp"
-                android:text="➕ Add to Database"
-                android:textSize="16sp"
-                android:textAllCaps="false"
-                android:background="@drawable/edittext_background"
-                android:textColor="@color/white"
-                android:layout_marginBottom="12dp"
-                android:visibility="gone"/>
 
             <!-- Back Button -->
             <Button

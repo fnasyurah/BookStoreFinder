@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <!-- Search Bar (like Lab 8) -->
+    <!-- Search Bar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="12dp"
-        android:background="@android:color/white"
+        android:padding="16dp"
+        android:background="@color/white"
         android:elevation="4dp">
 
         <EditText
@@ -19,7 +20,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="Search location..."
+            android:hint="Enter location (e.g., Kuala Lumpur)"
             android:padding="12dp"
             android:background="@drawable/edittext_background"/>
 
@@ -27,8 +28,8 @@
             android:id="@+id/btnSearch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Search"
-            android:padding="12dp"
+            android:text="🔍 Search"
+            android:paddingHorizontal="16dp"
             android:layout_marginStart="8dp"
             android:backgroundTint="@color/purple_500"
             android:textColor="@color/white"/>
@@ -39,8 +40,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="8dp"
-        android:background="@android:color/white"
+        android:padding="16dp"
+        android:background="@color/white"
         android:elevation="2dp">
 
         <Button
@@ -49,18 +50,17 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="📍 My Location"
-            android:layout_margin="4dp"
             android:backgroundTint="@color/teal_700"
             android:textColor="@color/white"/>
 
         <Button
-            android:id="@+id/btnNearbyBookstores"
+            android:id="@+id/btnFindBookstores"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="📍 Nearby Bookstores"
-            android:layout_margin="4dp"
-            android:backgroundTint="@color/teal_700"
+            android:text="📚 Find Bookstores"
+            android:layout_marginStart="16dp"
+            android:backgroundTint="@color/purple_500"
             android:textColor="@color/white"/>
     </LinearLayout>
 

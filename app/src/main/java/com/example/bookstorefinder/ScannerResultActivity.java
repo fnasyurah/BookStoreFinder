@@ -1,7 +1,6 @@
 package com.example.bookstorefinder;
 
-import static android.content.ContentValues.TAG;
-
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -9,23 +8,21 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
-import java.util.HashMap;
-import java.util.Map;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class ScannerResultActivity extends AppCompatActivity {
 
     private TextView textViewIsbn, textViewTitle, textViewAuthor, textViewPublisher,
-            textViewYear, textViewPrice, textViewGenre, textViewDescription;
-    private Button buttonSearchOnline, buttonAddToDatabase, buttonBack;
+            textViewYear, textViewGenre, textViewSummary;
+    private Button buttonSearchOnline, buttonBack;
 
-    private DatabaseReference databaseReference;
+    private RequestQueue requestQueue;
     private String scannedIsbn;
-    private Book foundBook = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,18 +36,15 @@ public class ScannerResultActivity extends AppCompatActivity {
             finish();
             return;
         }
-        // In ScannerResultActivity, add this:
-        FirebaseDatabase database = FirebaseDatabase.getInstance();
-        Log.d(TAG, "Database URL: " + database.getReference().toString());
+
+        // Initialize Volley for API requests
+        requestQueue = Volley.newRequestQueue(this);
 
         // Initialize views
         initializeViews();
 
-        // Setup Firebase reference
-        databaseReference = FirebaseDatabase.getInstance().getReference("books");
-
-        // Search for book in database
-        searchBookInDatabase();
+        // Search for book in Open Library API
+        searchBookInOpenLibrary();
 
         // Setup button listeners
         setupButtonListeners();
@@ -62,12 +56,10 @@ public class ScannerResultActivity extends AppCompatActivity {
         textViewAuthor = findViewById(R.id.textViewAuthor);
         textViewPublisher = findViewById(R.id.textViewPublisher);
         textViewYear = findViewById(R.id.textViewYear);
-        textViewPrice = findViewById(R.id.textViewPrice);
         textViewGenre = findViewById(R.id.textViewGenre);
-        textViewDescription = findViewById(R.id.textViewDescription);
+        textViewSummary = findViewById(R.id.textViewSummary);
 
         buttonSearchOnline = findViewById(R.id.buttonSearchOnline);
-        buttonAddToDatabase = findViewById(R.id.buttonAddToDatabase);
         buttonBack = findViewById(R.id.buttonBack);
 
         // Display scanned ISBN
@@ -95,71 +87,136 @@ public class ScannerResultActivity extends AppCompatActivity {
         return isbn; // Return original if not standard length
     }
 
-    private void searchBookInDatabase() {
-        // Query Firebase for book with this ISBN
-        databaseReference.orderByChild("isbn").equalTo(scannedIsbn)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        if (dataSnapshot.exists()) {
-                            // Book found in database
-                            for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                                foundBook = snapshot.getValue(Book.class);
-                                if (foundBook != null) {
-                                    foundBook.setId(snapshot.getKey());
-                                    displayBookInfo(foundBook);
-                                    break;
-                                }
-                            }
-                        } else {
-                            // Book not found in database
-                            displayBookNotFound();
-                            Toast.makeText(ScannerResultActivity.this,
-                                    "Book not found in database. You can add it manually.",
-                                    Toast.LENGTH_LONG).show();
-                        }
-                    }
+    private void searchBookInOpenLibrary() {
+        // Use Open Library API (free, no API key needed)
+        String url = "https://openlibrary.org/isbn/" + scannedIsbn + ".json";
 
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-                        Toast.makeText(ScannerResultActivity.this,
-                                "Database error: " + databaseError.getMessage(),
-                                Toast.LENGTH_SHORT).show();
+        // Show loading
+        textViewTitle.setText("Searching book info...");
+        textViewSummary.setText("Please wait while we search Open Library...");
+
+        // Make API request using Volley
+        JsonObjectRequest request = new JsonObjectRequest(
+                Request.Method.GET, url, null,
+                response -> {
+                    try {
+                        Log.d("BookScanner", "Open Library Response: " + response.toString());
+
+                        // Parse book data from Open Library API
+                        String title = response.optString("title", "Unknown Title");
+                        String author = "Unknown Author";
+                        String publisher = response.optString("publishers", "Unknown Publisher");
+                        String publishDate = response.optString("publish_date", "Unknown Year");
+
+                        // Get summary/description
+                        String summary = "No summary available";
+                        if (response.has("description")) {
+                            Object descObj = response.get("description");
+                            if (descObj instanceof String) {
+                                summary = (String) descObj;
+                            } else if (descObj instanceof JSONObject) {
+                                summary = ((JSONObject) descObj).optString("value", "No summary available");
+                            }
+                        }
+
+                        // Get author names if available
+                        if (response.has("authors")) {
+                            try {
+                                JSONArray authors = response.getJSONArray("authors");
+                                if (authors.length() > 0) {
+                                    String authorKey = authors.getJSONObject(0).getString("key");
+                                    // Fetch author details
+                                    fetchAuthorDetails(authorKey, title, publisher, publishDate, summary);
+                                    return;
+                                }
+                            } catch (Exception e) {
+                                Log.e("BookScanner", "Error parsing authors: " + e.getMessage());
+                            }
+                        }
+
+                        // If no author details to fetch, display what we have
+                        displayBookInfo(title, author, publisher, publishDate, summary);
+
+                    } catch (Exception e) {
+                        Log.e("BookScanner", "Error parsing book data: " + e.getMessage());
                         displayBookNotFound();
                     }
-                });
+                },
+                error -> {
+                    Log.e("BookScanner", "API Error: " + error.getMessage());
+                    displayBookNotFound();
+                }
+        );
+
+        // Set timeout for request (10 seconds)
+        request.setRetryPolicy(new com.android.volley.DefaultRetryPolicy(
+                10000, // 10 seconds timeout
+                com.android.volley.DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                com.android.volley.DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+
+        requestQueue.add(request);
     }
 
-    private void displayBookInfo(Book book) {
-        textViewTitle.setText(book.getTitle());
-        textViewAuthor.setText("Author: " + book.getAuthor());
-        textViewPublisher.setText("Publisher: " + book.getPublisher());
-        textViewYear.setText("Year: " + book.getYear());
-        textViewPrice.setText("Price: " + book.getFormattedPrice());
-        textViewGenre.setText("Genre: " + book.getGenre());
-        textViewDescription.setText(book.getDescription());
+    private void fetchAuthorDetails(String authorKey, String title, String publisher,
+                                    String publishDate, String summary) {
+        String authorUrl = "https://openlibrary.org" + authorKey + ".json";
 
-        // Hide "Add to Database" button since book already exists
-        buttonAddToDatabase.setVisibility(View.GONE);
+        JsonObjectRequest authorRequest = new JsonObjectRequest(
+                Request.Method.GET, authorUrl, null,
+                response -> {
+                    try {
+                        String authorName = response.optString("name", "Unknown Author");
+                        displayBookInfo(title, authorName, publisher, publishDate, summary);
+                    } catch (Exception e) {
+                        Log.e("BookScanner", "Error parsing author: " + e.getMessage());
+                        displayBookInfo(title, "Unknown Author", publisher, publishDate, summary);
+                    }
+                },
+                error -> {
+                    Log.e("BookScanner", "Author API Error: " + error.getMessage());
+                    displayBookInfo(title, "Unknown Author", publisher, publishDate, summary);
+                }
+        );
+
+        requestQueue.add(authorRequest);
+    }
+
+    private void displayBookInfo(String title, String author, String publisher,
+                                 String year, String summary) {
+        textViewTitle.setText(title);
+        textViewAuthor.setText("Author: " + author);
+        textViewPublisher.setText("Publisher: " + publisher);
+        textViewYear.setText("Year: " + year);
+
+        // Set summary (truncate if too long)
+        if (summary.length() > 400) {
+            summary = summary.substring(0, 400) + "...";
+        }
+        textViewSummary.setText(" " + summary);
+
         buttonSearchOnline.setEnabled(true);
+
+        Toast.makeText(this, "✓ Book details loaded from Open Library", Toast.LENGTH_SHORT).show();
     }
 
     private void displayBookNotFound() {
-        textViewTitle.setText("Book Not Found in Database");
+        textViewTitle.setText("Book Not Found");
         textViewAuthor.setText("Author: Unknown");
         textViewPublisher.setText("Publisher: Unknown");
         textViewYear.setText("Year: Unknown");
-        textViewPrice.setText("Price: RM 0.00");
         textViewGenre.setText("Genre: Unknown");
-        textViewDescription.setText("This book is not in our database. You can add it manually or search online.");
+        textViewSummary.setText("This book was not found in Open Library database.\n\n" +
+                "Possible reasons:\n" +
+                "• Book is very rare or new\n" +
+                "• ISBN might be incorrect\n" +
+                "• Book not in digital databases\n\n" +
+                "Click 'Search Online' to search on Google.");
 
-        // Show "Add to Database" button
-        buttonAddToDatabase.setVisibility(View.VISIBLE);
         buttonSearchOnline.setEnabled(true);
     }
 
     private void setupButtonListeners() {
-        // Search Online button (opens browser)
+        // Search Online button (opens browser) - Lab 7 pattern
         buttonSearchOnline.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -167,29 +224,24 @@ public class ScannerResultActivity extends AppCompatActivity {
             }
         });
 
-        // Add to Database button
-        buttonAddToDatabase.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                addBookToDatabase();
-            }
-        });
-
-        // Back button
+        // Back button - Fixed to go back to ScannerActivity
         buttonBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // Go back to ScannerActivity (Lab 2 pattern - Intent navigation)
+                Intent intent = new Intent(ScannerResultActivity.this, ScannerActivity.class);
+                startActivity(intent);
                 finish();
             }
         });
     }
 
     private void searchBookOnline() {
-        // Open browser to search for book by ISBN
+        // Open browser to search for book by ISBN (Lab 7 pattern)
         try {
-            String searchUrl = "https://www.google.com/search?q=ISBN+" + scannedIsbn + "+book";
-            android.content.Intent browserIntent = new android.content.Intent(
-                    android.content.Intent.ACTION_VIEW,
+            String searchUrl = "https://www.google.com/search?q=" + scannedIsbn + "+book";
+            Intent browserIntent = new Intent(
+                    Intent.ACTION_VIEW,
                     android.net.Uri.parse(searchUrl));
             startActivity(browserIntent);
         } catch (Exception e) {
@@ -197,41 +249,12 @@ public class ScannerResultActivity extends AppCompatActivity {
         }
     }
 
-    private void addBookToDatabase() {
-        // Create a simple dialog or start a new activity to add book details
-        // For now, we'll add a placeholder book
-        String bookId = databaseReference.push().getKey();
-
-        Map<String, Object> bookData = new HashMap<>();
-        bookData.put("isbn", scannedIsbn);
-        bookData.put("title", "Unknown Title");
-        bookData.put("author", "Unknown Author");
-        bookData.put("publisher", "Unknown Publisher");
-        bookData.put("year", "Unknown");
-        bookData.put("price", 0.0);
-        bookData.put("genre", "General");
-        bookData.put("description", "Added via scanner");
-
-        if (bookId != null) {
-            databaseReference.child(bookId).setValue(bookData)
-                    .addOnCompleteListener(task -> {
-                        if (task.isSuccessful()) {
-                            Toast.makeText(ScannerResultActivity.this,
-                                    "Book added to database (placeholder data)",
-                                    Toast.LENGTH_SHORT).show();
-                            buttonAddToDatabase.setVisibility(View.GONE);
-                        } else {
-                            Toast.makeText(ScannerResultActivity.this,
-                                    "Failed to add book: " + task.getException().getMessage(),
-                                    Toast.LENGTH_SHORT).show();
-                        }
-                    });
-        }
-    }
-
     @Override
     public void onBackPressed() {
+        // When user presses device back button, go to ScannerActivity
         super.onBackPressed();
+        Intent intent = new Intent(this, ScannerActivity.class);
+        startActivity(intent);
         finish();
     }
 }

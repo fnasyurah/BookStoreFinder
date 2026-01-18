@@ -85,12 +85,53 @@ public class ScannerActivity extends AppCompatActivity {
         }
     }
 
-    private void processScannedIsbn(String isbn) {
-        // Clean the ISBN (remove any non-digit characters except +)
-        String cleanIsbn = isbn.replaceAll("[^0-9]", "");
+    private boolean isValidIsbn(String isbn) {
+        String cleanIsbn = isbn.replaceAll("[^0-9Xx]", "");
 
-        // Validate ISBN length
-        if (cleanIsbn.length() == 10 || cleanIsbn.length() == 13) {
+        if (cleanIsbn.length() == 10) {
+            // Validate ISBN-10
+            return validateIsbn10(cleanIsbn);
+        } else if (cleanIsbn.length() == 13) {
+            // Validate ISBN-13
+            return validateIsbn13(cleanIsbn);
+        }
+        return false;
+    }
+
+    private boolean validateIsbn10(String isbn) {
+        try {
+            int sum = 0;
+            for (int i = 0; i < 9; i++) {
+                sum += (i + 1) * Character.getNumericValue(isbn.charAt(i));
+            }
+            char lastChar = isbn.charAt(9);
+            int lastDigit = (lastChar == 'X' || lastChar == 'x') ? 10 : Character.getNumericValue(lastChar);
+            sum += 10 * lastDigit;
+            return (sum % 11 == 0);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean validateIsbn13(String isbn) {
+        try {
+            int sum = 0;
+            for (int i = 0; i < 13; i++) {
+                int digit = Character.getNumericValue(isbn.charAt(i));
+                sum += (i % 2 == 0) ? digit : digit * 3;
+            }
+            return (sum % 10 == 0);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void processScannedIsbn(String isbn) {
+        // Clean the ISBN
+        String cleanIsbn = isbn.replaceAll("[^0-9Xx]", "");
+
+        // Validate ISBN
+        if (isValidIsbn(cleanIsbn)) {
             // Valid ISBN, go to result screen
             Intent intent = new Intent(this, ScannerResultActivity.class);
             intent.putExtra("SCANNED_ISBN", cleanIsbn);
@@ -98,7 +139,7 @@ public class ScannerActivity extends AppCompatActivity {
             finish();
         } else {
             Toast.makeText(this,
-                    "Invalid ISBN format. Got " + cleanIsbn.length() + " digits. Need 10 or 13.",
+                    "Invalid ISBN format. Please scan a valid book barcode.",
                     Toast.LENGTH_LONG).show();
             // Restart scanner
             startScanner();

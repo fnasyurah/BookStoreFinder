@@ -9,20 +9,33 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
+
+import java.io.File;
 import java.util.List;
 
 public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewViewHolder> {
 
     private Context context;
     private List<Review> reviewList;
+    private RecyclerView recyclerViewReviews; // Add this reference
 
+    // Constructor with RecyclerView reference
+    public ReviewAdapter(Context context, List<Review> reviewList, RecyclerView recyclerView) {
+        this.context = context;
+        this.reviewList = reviewList;
+        this.recyclerViewReviews = recyclerView;
+    }
+
+    // Keep the old constructor for backward compatibility
     public ReviewAdapter(Context context, List<Review> reviewList) {
         this.context = context;
         this.reviewList = reviewList;
+        this.recyclerViewReviews = null;
     }
 
     @NonNull
@@ -37,29 +50,46 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
         Review review = reviewList.get(position);
 
         // Set review data
-        holder.textViewUser.setText(review.getUserEmail());
+        if (review.getUserEmail() != null && !review.getUserEmail().isEmpty()) {
+            holder.textViewUser.setText(review.getUserEmail());
+        } else {
+            holder.textViewUser.setText("Anonymous User");
+        }
+
         holder.textViewBookstore.setText("Bookstore: " + review.getBookstoreName());
-        holder.textViewRating.setText(review.getRatingStars() + " (" + review.getRating() + ")");
+        holder.textViewRating.setText(review.getRatingStars() + " (" + String.format("%.1f", review.getRating()) + "/5)");
         holder.textViewReview.setText(review.getReviewText());
         holder.textViewDate.setText(review.getFormattedDate());
 
-        // Load image using Glide
-        // In onBindViewHolder:
-        if (review.getImageUrl() != null && !review.getImageUrl().isEmpty()) {
-            // Try to load local image
+        // Load image if exists
+        if (review.getImageUrl() != null && !review.getImageUrl().isEmpty() && !review.getImageUrl().equals("null")) {
             String localPath = review.getLocalImagePath(context);
             if (localPath != null) {
-                holder.imageViewReview.setVisibility(View.VISIBLE);
+                try {
+                    // Option 1: Use Glide (recommended)
+                    Glide.with(context)
+                            .load(new File(localPath))
+                            .placeholder(android.R.drawable.ic_menu_gallery) // Use system icon if custom not available
+                            .error(android.R.drawable.ic_menu_report_image)
+                            .centerCrop()
+                            .into(holder.imageViewReview);
 
-                // Load from local storage (Lab 9 pattern)
-                BitmapFactory.Options options = new BitmapFactory.Options();
-                options.inSampleSize = 2; // Reduce size for memory
-                Bitmap bitmap = BitmapFactory.decodeFile(localPath, options);
-
-                if (bitmap != null) {
-                    holder.imageViewReview.setImageBitmap(bitmap);
-                } else {
-                    holder.imageViewReview.setVisibility(View.GONE);
+                    holder.imageViewReview.setVisibility(View.VISIBLE);
+                } catch (Exception e) {
+                    // Option 2: Fallback to BitmapFactory if Glide fails
+                    try {
+                        BitmapFactory.Options options = new BitmapFactory.Options();
+                        options.inSampleSize = 2;
+                        Bitmap bitmap = BitmapFactory.decodeFile(localPath, options);
+                        if (bitmap != null) {
+                            holder.imageViewReview.setImageBitmap(bitmap);
+                            holder.imageViewReview.setVisibility(View.VISIBLE);
+                        } else {
+                            holder.imageViewReview.setVisibility(View.GONE);
+                        }
+                    } catch (Exception e2) {
+                        holder.imageViewReview.setVisibility(View.GONE);
+                    }
                 }
             } else {
                 holder.imageViewReview.setVisibility(View.GONE);
@@ -83,6 +113,11 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
     public void addReview(Review review) {
         reviewList.add(0, review); // Add at beginning for latest first
         notifyItemInserted(0);
+
+        // Scroll to top if we have the RecyclerView reference
+        if (recyclerViewReviews != null) {
+            recyclerViewReviews.smoothScrollToPosition(0);
+        }
     }
 
     public static class ReviewViewHolder extends RecyclerView.ViewHolder {

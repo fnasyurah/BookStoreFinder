@@ -2,6 +2,7 @@ package com.example.bookstorefinder;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -82,10 +83,14 @@ public class MainActivity extends AppCompatActivity {
         btnAbout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this,
-                        "About Us feature coming soon!",
-                        Toast.LENGTH_SHORT).show();
-                // Will implement in Phase 5
+                Log.d("MainActivity", "About button clicked");
+                try {
+                    Intent intent = new Intent(MainActivity.this, AboutUsActivity.class);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Log.e("MainActivity", "Error starting AboutUsActivity: " + e.getMessage());
+                    Toast.makeText(MainActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }

@@ -9,10 +9,15 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" /> <!-- Camera feature (required=false means app will work without camera) -->
     <uses-feature
         android:name="android.hardware.camera"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.telephony"
         android:required="true" />
     <uses-feature
         android:name="android.hardware.telephony"
@@ -29,19 +34,25 @@
         android:theme="@style/Theme.BookStoreFinder"
         tools:targetApi="31">
         <activity
+            android:name=".AboutUsActivity"
+            android:exported="false" />
+        <activity
             android:name=".PostReviewActivity"
             android:exported="false" />
         <activity
             android:name=".ReviewFeedActivity"
             android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"
             android:exported="false"
-            android:grantUriPermissions="true"/>
-        <meta-data
-            android:name="android.support.FILE_PROVIDER_PATHS"
-            android:resource="@xml/file_paths" />
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <activity
             android:name=".CaptureActivityPortrait"
             android:exported="false" />
@@ -62,7 +73,6 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
         <activity
             android:name=".LoginActivity"
@@ -81,8 +91,10 @@
             android:exported="false" /> <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyBSZ5z9Ke3YiiaCKo_ZHGxtQVdbVGiXY2o" />
-
+            android:value="AIzaSyBSZ5z9Ke3YiiaCKo_ZHGxtQVdbVGiXY2o" /> <!-- Add this inside <application> tag in AndroidManifest.xml -->
+        <meta-data
+            android:name="firebase_database_url"
+            android:value="https://bookstorefinder-default-rtdb.firebaseio.com/" />
     </application>
 
 </manifest>
