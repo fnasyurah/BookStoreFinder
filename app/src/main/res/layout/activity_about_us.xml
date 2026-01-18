@@ -271,7 +271,7 @@
             android:id="@+id/textCopyright"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="© 2026 BookstoreFinder. All rights reserved."
+            android:text="© 2026 Bookstore Finder. All rights reserved."
             android:textSize="12sp"
             android:textColor="@color/black"
             android:layout_gravity="center_horizontal"

@@ -12,8 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class BookStoreDetailActivity extends AppCompatActivity {
 
-    private TextView textViewName, textViewAddress, textViewPhone, textViewDescription,
-            textViewRating, textViewOpeningHours;
+    private TextView textViewName, textViewAddress, textViewPhone, textViewRating, textViewOpeningHours;
     private Button buttonCall, buttonBack;
 
     // Store the place details
