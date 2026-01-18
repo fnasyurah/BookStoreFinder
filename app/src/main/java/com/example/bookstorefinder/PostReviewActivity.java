@@ -29,8 +29,11 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -41,7 +44,7 @@ import java.util.Locale;
 
 public class PostReviewActivity extends AppCompatActivity {
 
-    // Camera-related variables (following Lab 9)
+    // Camera-related variables
     private static final String TAG = "PostReviewActivity";
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 100;
@@ -74,10 +77,20 @@ public class PostReviewActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
         currentUser = mAuth.getCurrentUser();
 
+        // Check if user is logged in
+        if (currentUser == null) {
+            Toast.makeText(this, "Please login first", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
         // Initialize Firebase Database
         FirebaseDatabase database = FirebaseDatabase.getInstance();
         databaseReference = database.getReference("reviews");
         Log.d(TAG, "Database reference: " + databaseReference.toString());
+
+        // Test Firebase connection
+        testFirebaseConnection();
 
         // Initialize UI components
         imageViewPreview = findViewById(R.id.imageViewPreview);
@@ -87,13 +100,6 @@ public class PostReviewActivity extends AppCompatActivity {
         editTextReview = findViewById(R.id.editTextReview);
         ratingBar = findViewById(R.id.ratingBar);
         textViewPreviewLabel = findViewById(R.id.textViewPreviewLabel);
-
-        // Check if user is logged in
-        if (currentUser == null) {
-            Toast.makeText(this, "Please login first", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
 
         // Initially disable post button
         btnPostReview.setEnabled(false);
@@ -123,6 +129,41 @@ public class PostReviewActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Log.d(TAG, "Post Review button clicked");
                 postReview();
+            }
+        });
+    }
+
+    private void testFirebaseConnection() {
+        Log.d(TAG, "Testing Firebase connection...");
+
+        // Test write
+        DatabaseReference testRef = FirebaseDatabase.getInstance()
+                .getReference("test_connection")
+                .child("test_" + System.currentTimeMillis());
+
+        testRef.setValue("Testing at " + new Date().toString())
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        Log.d(TAG, "✅ Firebase connection test: WRITE SUCCESS");
+                    } else {
+                        Log.e(TAG, "❌ Firebase connection test: WRITE FAILED - " + task.getException());
+                    }
+                });
+
+        // Test read connection status
+        DatabaseReference testReadRef = FirebaseDatabase.getInstance()
+                .getReference(".info/connected");
+
+        testReadRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                Boolean connected = snapshot.getValue(Boolean.class);
+                Log.d(TAG, "Firebase connection status: " + (connected != null && connected ? "CONNECTED" : "DISCONNECTED"));
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e(TAG, "Firebase connection listener cancelled: " + error.getMessage());
             }
         });
     }
@@ -216,7 +257,7 @@ public class PostReviewActivity extends AppCompatActivity {
         }
     }
 
-    // Create image file (following Lab 9 pattern)
+    // Create image file
     private File createImageFile() throws IOException {
         // Create image file name with timestamp
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
@@ -354,25 +395,34 @@ public class PostReviewActivity extends AppCompatActivity {
 
             File destinationFile = new File(storageDir, imageFileName);
 
+            // Check if source file exists
+            File sourceFile = new File(currentPhotoPath);
+            Log.d(TAG, "Source file exists: " + sourceFile.exists());
+            Log.d(TAG, "Source file size: " + sourceFile.length() + " bytes");
+
             // Copy the file
             Bitmap bitmap = BitmapFactory.decodeFile(currentPhotoPath);
             if (bitmap != null) {
+                Log.d(TAG, "Bitmap decoded successfully. Width: " + bitmap.getWidth() + ", Height: " + bitmap.getHeight());
+
                 FileOutputStream fos = new FileOutputStream(destinationFile);
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 80, fos); // 80% quality
                 fos.close();
 
-                Log.d(TAG, "✓ Image saved locally: " + imageFileName + " at " + destinationFile.getAbsolutePath());
+                Log.d(TAG, "✓ Image saved locally: " + imageFileName);
+                Log.d(TAG, "Destination file exists: " + destinationFile.exists());
+                Log.d(TAG, "Destination file size: " + destinationFile.length() + " bytes");
 
                 // Return just the filename (not full path)
                 return imageFileName;
             } else {
                 Log.e(TAG, "Failed to decode bitmap for saving");
+                return null;
             }
         } catch (Exception e) {
             Log.e(TAG, "Error saving image: " + e.getMessage(), e);
+            return null;
         }
-
-        return null;
     }
 
     private void postReview() {
@@ -423,6 +473,13 @@ public class PostReviewActivity extends AppCompatActivity {
         Log.d(TAG, "Saving image to local storage...");
         String localImageName = saveImageToLocalStorage();
 
+        if (localImageName == null) {
+            Log.e(TAG, "Failed to save image locally");
+            Toast.makeText(this, "Failed to save image. Please try again.", Toast.LENGTH_SHORT).show();
+            resetPostButton();
+            return;
+        }
+
         // Save to Firebase Database
         saveReviewToDatabase(bookstoreName, reviewText, rating, localImageName);
     }
@@ -439,24 +496,40 @@ public class PostReviewActivity extends AppCompatActivity {
             return;
         }
 
+        // Get user info
+        String userId = currentUser.getUid();
+        String userEmail = currentUser.getEmail();
+        String userName = currentUser.getDisplayName();
+
+        // If display name is null, use email username
+        if (userName == null || userName.isEmpty()) {
+            if (userEmail != null && userEmail.contains("@")) {
+                userName = userEmail.split("@")[0]; // Get part before @
+            } else {
+                userName = "Anonymous";
+            }
+        }
+
         Log.d(TAG, "=== SAVING TO FIREBASE ===");
         Log.d(TAG, "Review ID: " + reviewId);
+        Log.d(TAG, "User ID: " + userId);
+        Log.d(TAG, "User Name: " + userName);
+        Log.d(TAG, "User Email: " + userEmail);
         Log.d(TAG, "Bookstore: " + bookstoreName);
-        Log.d(TAG, "User: " + currentUser.getEmail());
-        Log.d(TAG, "User ID: " + currentUser.getUid());
         Log.d(TAG, "Rating: " + rating);
-        Log.d(TAG, "Image: " + (imageFileName != null ? imageFileName : "none"));
+        Log.d(TAG, "Image: " + imageFileName);
         Log.d(TAG, "Timestamp: " + System.currentTimeMillis());
 
-        // Create Review object (Firebase requires empty constructor + getters/setters)
+        // Create Review object
         Review review = new Review();
         review.setId(reviewId);
-        review.setUserId(currentUser.getUid());
-        review.setUserEmail(currentUser.getEmail());
+        review.setUserId(userId);
+        review.setUserName(userName);
+        review.setUserEmail(userEmail);
         review.setBookstoreId("unknown"); // We don't have bookstore IDs yet
         review.setBookstoreName(bookstoreName);
         review.setReviewText(reviewText);
-        review.setImageUrl(imageFileName != null ? imageFileName : "");
+        review.setImageUrl(imageFileName);
         review.setRating(rating);
         review.setTimestamp(System.currentTimeMillis());
 
@@ -476,7 +549,7 @@ public class PostReviewActivity extends AppCompatActivity {
                             // Clear form
                             clearForm();
 
-                            // Go back to ReviewFeedActivity with proper flags
+                            // Go back to ReviewFeedActivity
                             Intent intent = new Intent(PostReviewActivity.this,
                                     ReviewFeedActivity.class);
                             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -500,30 +573,6 @@ public class PostReviewActivity extends AppCompatActivity {
                 });
     }
 
-    // Add this test method
-    private void saveTestReview() {
-        String reviewId = databaseReference.push().getKey();
-        Review testReview = new Review(
-                reviewId,
-                "test_user_id",
-                "test@example.com",
-                "test_store_id",
-                "Test Bookstore",
-                "This is a test review",
-                "",
-                4.5f,
-                System.currentTimeMillis()
-        );
-
-        databaseReference.child(reviewId).setValue(testReview)
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        Toast.makeText(this, "Test review saved!", Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(this, "Test failed: " + task.getException(), Toast.LENGTH_SHORT).show();
-                    }
-                });
-    }
     private void resetPostButton() {
         btnPostReview.setEnabled(true);
         btnPostReview.setText("POST REVIEW");

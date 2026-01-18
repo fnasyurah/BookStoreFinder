@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
-    app:cardCornerRadius="8dp"
-    app:cardElevation="2dp">
+    app:cardElevation="4dp"
+    app:cardCornerRadius="8dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -14,7 +13,7 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- User info and rating -->
+        <!-- User Info -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -22,64 +21,74 @@
             android:layout_marginBottom="8dp">
 
             <TextView
-                android:id="@+id/textViewUser"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="user@example.com"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="@color/black"/>
-
-            <TextView
-                android:id="@+id/textViewRating"
+                android:id="@+id/textUserName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="★★★★☆"
-                android:textSize="14sp"
-                android:textColor="@color/orange_700"/>
+                android:text="User Name"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_weight="1"/>
+
+            <RatingBar
+                android:id="@+id/ratingBar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:numStars="5"
+                android:stepSize="0.5"
+                android:rating="4.0"
+                style="?android:attr/ratingBarStyleSmall"/>
         </LinearLayout>
 
-        <!-- Bookstore name -->
+        <!-- User Email -->
         <TextView
-            android:id="@+id/textViewBookstore"
-            android:layout_width="match_parent"
+            android:id="@+id/textUserEmail"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Bookstore: Example Store"
-            android:textSize="14sp"
+            android:text="user@email.com"
+            android:textSize="12sp"
             android:textColor="@android:color/darker_gray"
             android:layout_marginBottom="8dp"/>
 
-        <!-- Review text -->
+        <!-- Store Name -->
         <TextView
-            android:id="@+id/textViewReview"
-            android:layout_width="match_parent"
+            android:id="@+id/textStoreName"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Great bookstore with amazing collection!"
-            android:textSize="15sp"
-            android:textColor="@color/black"
-            android:lineSpacingExtra="4dp"
-            android:layout_marginBottom="12dp"/>
+            android:text="Store: Store Name"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/purple_500"
+            android:layout_marginBottom="8dp"/>
 
-        <!-- Review image -->
+        <!-- Review Image -->
         <ImageView
             android:id="@+id/imageViewReview"
             android:layout_width="match_parent"
             android:layout_height="200dp"
-            android:layout_marginBottom="12dp"
             android:scaleType="centerCrop"
-            android:background="@color/white"
-            android:contentDescription="Review image"
+            android:background="@android:color/darker_gray"
+            android:layout_marginBottom="8dp"
             android:visibility="gone"/>
 
-        <!-- Date -->
+        <!-- Review Text -->
         <TextView
-            android:id="@+id/textViewDate"
+            android:id="@+id/textReview"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="01 Jan 2024, 14:30"
+            android:text="Review text goes here..."
+            android:textSize="14sp"
+            android:layout_marginBottom="8dp"
+            android:lineSpacingExtra="4dp"/>
+
+        <!-- Timestamp -->
+        <TextView
+            android:id="@+id/textTimestamp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="18 Jan 2024, 14:30"
             android:textSize="12sp"
             android:textColor="@android:color/darker_gray"
-            android:gravity="end"/>
+            android:layout_gravity="end"/>
+
     </LinearLayout>
 </androidx.cardview.widget.CardView>

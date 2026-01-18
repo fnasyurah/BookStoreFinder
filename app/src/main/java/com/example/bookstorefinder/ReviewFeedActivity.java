@@ -5,39 +5,27 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
-
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-
-import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 public class ReviewFeedActivity extends AppCompatActivity {
 
-    private static final String TAG = "ReviewFeedActivity";
-
     private RecyclerView recyclerViewReviews;
+    private TextView textViewEmpty;
+    private FloatingActionButton fabAddReview;
     private ReviewAdapter reviewAdapter;
     private List<Review> reviewList;
     private DatabaseReference databaseReference;
-    private FirebaseAuth mAuth;
-    private TextView textViewEmpty;
-    private FloatingActionButton fabAddReview;
+    private static final String TAG = "ReviewFeedActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,191 +34,108 @@ public class ReviewFeedActivity extends AppCompatActivity {
 
         Log.d(TAG, "=== ReviewFeedActivity STARTED ===");
 
-        // Create review_images directory if it doesn't exist
-        File storageDir = new File(getFilesDir(), "review_images");
-        if (!storageDir.exists()) {
-            boolean created = storageDir.mkdirs();
-            Log.d(TAG, "Created review_images directory: " + created);
-        }
-
-        // Initialize Firebase
-        mAuth = FirebaseAuth.getInstance();
-
-        // Initialize Firebase Database
-        FirebaseDatabase database = FirebaseDatabase.getInstance();
-        databaseReference = database.getReference("reviews");
-        Log.d(TAG, "Database reference path: " + databaseReference.toString());
-
-        databaseReference.get().addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                Log.d(TAG, "Direct database access successful");
-                DataSnapshot snapshot = task.getResult();
-                Log.d(TAG, "Total reviews in database: " + snapshot.getChildrenCount());
-            } else {
-                Log.e(TAG, "Direct database access failed: " + task.getException());
-            }
-        });
-
         // Initialize views
         recyclerViewReviews = findViewById(R.id.recyclerViewReviews);
         textViewEmpty = findViewById(R.id.textViewEmpty);
         fabAddReview = findViewById(R.id.fabAddReview);
 
         // Setup RecyclerView
+        recyclerViewReviews.setHasFixedSize(true);
+        recyclerViewReviews.setLayoutManager(new LinearLayoutManager(this));
+
         reviewList = new ArrayList<>();
         reviewAdapter = new ReviewAdapter(this, reviewList);
-        recyclerViewReviews.setLayoutManager(new LinearLayoutManager(this));
         recyclerViewReviews.setAdapter(reviewAdapter);
 
-        // Load reviews
+        // Initialize Firebase
+        databaseReference = FirebaseDatabase.getInstance().getReference("reviews");
+        Log.d(TAG, "Firebase reference: " + databaseReference.toString());
+
+        // Load reviews from Firebase
         loadReviews();
 
-        // Set up Floating Action Button
+        // FAB click listener - FIXED: Uncommented and implemented
         fabAddReview.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Check if user is logged in before posting
-                FirebaseUser currentUser = mAuth.getCurrentUser();
-                if (currentUser == null) {
-                    Toast.makeText(ReviewFeedActivity.this,
-                            "Please login first to post reviews",
-                            Toast.LENGTH_SHORT).show();
-                    return;
-                }
+                Log.d(TAG, "FAB clicked - Opening PostReviewActivity");
 
-                // Open Post Review Screen
+                // Open PostReviewActivity
                 Intent intent = new Intent(ReviewFeedActivity.this, PostReviewActivity.class);
                 startActivity(intent);
+
+                // Optional: Add animation
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
             }
         });
     }
 
     private void loadReviews() {
-        Log.d(TAG, "=== Loading reviews from Firebase ===");
+        Log.d(TAG, "Loading reviews from Firebase...");
 
-        // Show loading state
-        textViewEmpty.setText("Loading reviews...");
-        textViewEmpty.setVisibility(View.VISIBLE);
-        recyclerViewReviews.setVisibility(View.GONE);
+        databaseReference.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                Log.d(TAG, "onDataChange called");
+                reviewList.clear();
 
-        // Remove existing listener first to avoid duplicates
-        if (databaseReference != null) {
-            databaseReference.removeEventListener(valueEventListener);
-        }
+                if (dataSnapshot.exists()) {
+                    Log.d(TAG, "Data exists. Children count: " + dataSnapshot.getChildrenCount());
 
-        // Add new listener
-        databaseReference.addValueEventListener(valueEventListener);
-    }
-
-    // Create the ValueEventListener as a class field
-    private ValueEventListener valueEventListener = new ValueEventListener() {
-        @Override
-        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-            Log.d(TAG, "=== onDataChange called ===");
-            Log.d(TAG, "DataSnapshot exists: " + dataSnapshot.exists());
-            Log.d(TAG, "DataSnapshot children count: " + dataSnapshot.getChildrenCount());
-
-            reviewList.clear();
-
-            if (dataSnapshot.exists() && dataSnapshot.getChildrenCount() > 0) {
-                int reviewCount = 0;
-                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    try {
+                    int reviewCount = 0;
+                    for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
                         Log.d(TAG, "Processing snapshot key: " + snapshot.getKey());
 
-                        // Get the review data
                         Review review = snapshot.getValue(Review.class);
                         if (review != null) {
-                            // Set the ID from Firebase key
-                            review.setId(snapshot.getKey());
-
-                            // Log review details for debugging
-                            Log.d(TAG, "Review " + reviewCount + ":");
-                            Log.d(TAG, "  - Bookstore: " + review.getBookstoreName());
-                            Log.d(TAG, "  - User: " + review.getUserEmail());
-                            Log.d(TAG, "  - Rating: " + review.getRating());
-
+                            Log.d(TAG, "Review loaded: " + review.getBookstoreName() + " by " + review.getUserName());
                             reviewList.add(review);
                             reviewCount++;
                         } else {
-                            Log.e(TAG, "Review object is null for key: " + snapshot.getKey());
+                            Log.e(TAG, "Failed to convert snapshot to Review object");
                         }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error parsing review: " + e.getMessage(), e);
                     }
-                }
 
-                Log.d(TAG, "=== Total reviews loaded: " + reviewCount + " ===");
+                    Log.d(TAG, "Total reviews loaded: " + reviewCount);
 
-                // Sort by timestamp (newest first)
-                if (!reviewList.isEmpty()) {
-                    Collections.sort(reviewList, new Comparator<Review>() {
-                        @Override
-                        public int compare(Review r1, Review r2) {
-                            return Long.compare(r2.getTimestamp(), r1.getTimestamp());
-                        }
-                    });
-
-                    // Update adapter
-                    reviewAdapter.updateData(reviewList);
-
-                    // Show reviews
-                    textViewEmpty.setVisibility(View.GONE);
-                    recyclerViewReviews.setVisibility(View.VISIBLE);
-
-                    Toast.makeText(ReviewFeedActivity.this,
-                            "Loaded " + reviewList.size() + " reviews",
-                            Toast.LENGTH_SHORT).show();
+                    // Show/hide empty state
+                    if (reviewCount > 0) {
+                        textViewEmpty.setVisibility(View.GONE);
+                        recyclerViewReviews.setVisibility(View.VISIBLE);
+                    } else {
+                        textViewEmpty.setVisibility(View.VISIBLE);
+                        recyclerViewReviews.setVisibility(View.GONE);
+                    }
                 } else {
-                    showEmptyState("No reviews found in database");
+                    // No reviews found
+                    Log.d(TAG, "No reviews found in database");
+                    textViewEmpty.setVisibility(View.VISIBLE);
+                    recyclerViewReviews.setVisibility(View.GONE);
                 }
-            } else {
-                Log.d(TAG, "No reviews found in database or database is empty");
-                showEmptyState("No reviews yet.\nBe the first to share your experience!");
+
+                reviewAdapter.notifyDataSetChanged();
             }
-        }
 
-        @Override
-        public void onCancelled(@NonNull DatabaseError databaseError) {
-            Log.e(TAG, "=== DATABASE ERROR ===");
-            Log.e(TAG, "Code: " + databaseError.getCode());
-            Log.e(TAG, "Message: " + databaseError.getMessage());
-            Log.e(TAG, "Details: " + databaseError.getDetails());
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Log.e(TAG, "Firebase error: " + databaseError.getMessage());
 
-            Toast.makeText(ReviewFeedActivity.this,
-                    "Database error: " + databaseError.getMessage(),
-                    Toast.LENGTH_LONG).show();
-            showEmptyState("Error loading reviews. Please check your connection.");
-        }
-    };
-
-    private void showEmptyState(String message) {
-        textViewEmpty.setText(message);
-        textViewEmpty.setVisibility(View.VISIBLE);
-        recyclerViewReviews.setVisibility(View.GONE);
+                // Handle error
+                textViewEmpty.setText("Error loading reviews: " + databaseError.getMessage());
+                textViewEmpty.setVisibility(View.VISIBLE);
+                recyclerViewReviews.setVisibility(View.GONE);
+            }
+        });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        Log.d(TAG, "=== onResume - refreshing reviews ===");
-        // Refresh reviews when returning to this activity
-        loadReviews();
-    }
+        Log.d(TAG, "=== ReviewFeedActivity RESUMED ===");
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        // Remove listener to prevent memory leaks
-        if (databaseReference != null) {
-            databaseReference.removeEventListener(valueEventListener);
+        // Refresh data when returning to this activity
+        if (reviewAdapter != null) {
+            reviewAdapter.notifyDataSetChanged();
         }
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        Log.d(TAG, "=== onStart ===");
-
     }
 }
