@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -29,14 +30,11 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -89,9 +87,6 @@ public class PostReviewActivity extends AppCompatActivity {
         databaseReference = database.getReference("reviews");
         Log.d(TAG, "Database reference: " + databaseReference.toString());
 
-        // Test Firebase connection
-        testFirebaseConnection();
-
         // Initialize UI components
         imageViewPreview = findViewById(R.id.imageViewPreview);
         btnTakePhoto = findViewById(R.id.btnTakePhoto);
@@ -101,7 +96,7 @@ public class PostReviewActivity extends AppCompatActivity {
         ratingBar = findViewById(R.id.ratingBar);
         textViewPreviewLabel = findViewById(R.id.textViewPreviewLabel);
 
-        // Initially disable post button
+        // Initially disable post button (wait for photo)
         btnPostReview.setEnabled(false);
         btnPostReview.setAlpha(0.5f);
 
@@ -133,41 +128,6 @@ public class PostReviewActivity extends AppCompatActivity {
         });
     }
 
-    private void testFirebaseConnection() {
-        Log.d(TAG, "Testing Firebase connection...");
-
-        // Test write
-        DatabaseReference testRef = FirebaseDatabase.getInstance()
-                .getReference("test_connection")
-                .child("test_" + System.currentTimeMillis());
-
-        testRef.setValue("Testing at " + new Date().toString())
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        Log.d(TAG, "✅ Firebase connection test: WRITE SUCCESS");
-                    } else {
-                        Log.e(TAG, "❌ Firebase connection test: WRITE FAILED - " + task.getException());
-                    }
-                });
-
-        // Test read connection status
-        DatabaseReference testReadRef = FirebaseDatabase.getInstance()
-                .getReference(".info/connected");
-
-        testReadRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                Boolean connected = snapshot.getValue(Boolean.class);
-                Log.d(TAG, "Firebase connection status: " + (connected != null && connected ? "CONNECTED" : "DISCONNECTED"));
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Log.e(TAG, "Firebase connection listener cancelled: " + error.getMessage());
-            }
-        });
-    }
-
     private void createAppDirectories() {
         try {
             // Create Pictures directory for camera photos
@@ -177,12 +137,6 @@ public class PostReviewActivity extends AppCompatActivity {
                 Log.d(TAG, "Pictures directory created: " + created + " at " + picturesDir.getAbsolutePath());
             }
 
-            // Create review_images directory for saved photos
-            File reviewImagesDir = new File(getFilesDir(), "review_images");
-            if (!reviewImagesDir.exists()) {
-                boolean created = reviewImagesDir.mkdirs();
-                Log.d(TAG, "Review images directory created: " + created + " at " + reviewImagesDir.getAbsolutePath());
-            }
         } catch (Exception e) {
             Log.e(TAG, "Error creating directories: " + e.getMessage());
         }
@@ -373,55 +327,58 @@ public class PostReviewActivity extends AppCompatActivity {
         }
     }
 
-    // Save image to local storage
-    private String saveImageToLocalStorage() {
-        if (currentPhotoPath == null || photoFile == null) {
-            Log.e(TAG, "No photo to save - currentPhotoPath or photoFile is null");
-            return null;
+    // Convert image to Base64 string
+    private String convertImageToBase64() {
+        if (currentPhotoPath == null) {
+            Log.e(TAG, "No photo to convert");
+            return "";
         }
 
         try {
-            // Create unique filename
-            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
-            String imageFileName = "review_" + timeStamp + ".jpg";
-            Log.d(TAG, "Saving image as: " + imageFileName);
-
-            // Save to app's internal storage in review_images directory
-            File storageDir = new File(getFilesDir(), "review_images");
-            if (!storageDir.exists()) {
-                boolean created = storageDir.mkdirs();
-                Log.d(TAG, "Created review_images directory: " + created);
+            // Read the image file
+            File imageFile = new File(currentPhotoPath);
+            if (!imageFile.exists()) {
+                Log.e(TAG, "Image file doesn't exist: " + currentPhotoPath);
+                return "";
             }
 
-            File destinationFile = new File(storageDir, imageFileName);
+            // Check file size (Base64 increases size by ~33%)
+            long fileSize = imageFile.length();
+            Log.d(TAG, "Original image size: " + fileSize + " bytes");
 
-            // Check if source file exists
-            File sourceFile = new File(currentPhotoPath);
-            Log.d(TAG, "Source file exists: " + sourceFile.exists());
-            Log.d(TAG, "Source file size: " + sourceFile.length() + " bytes");
+            // Realtime Database has limits, so compress heavily
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = 8; // Heavy compression for Base64
 
-            // Copy the file
-            Bitmap bitmap = BitmapFactory.decodeFile(currentPhotoPath);
-            if (bitmap != null) {
-                Log.d(TAG, "Bitmap decoded successfully. Width: " + bitmap.getWidth() + ", Height: " + bitmap.getHeight());
-
-                FileOutputStream fos = new FileOutputStream(destinationFile);
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 80, fos); // 80% quality
-                fos.close();
-
-                Log.d(TAG, "✓ Image saved locally: " + imageFileName);
-                Log.d(TAG, "Destination file exists: " + destinationFile.exists());
-                Log.d(TAG, "Destination file size: " + destinationFile.length() + " bytes");
-
-                // Return just the filename (not full path)
-                return imageFileName;
-            } else {
-                Log.e(TAG, "Failed to decode bitmap for saving");
-                return null;
+            Bitmap bitmap = BitmapFactory.decodeFile(currentPhotoPath, options);
+            if (bitmap == null) {
+                Log.e(TAG, "Failed to decode bitmap for Base64");
+                return "";
             }
+
+            // Compress to very small size for Realtime Database
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 40, baos); // 40% quality
+            byte[] imageBytes = baos.toByteArray();
+
+            // Convert to Base64
+            String base64Image = Base64.encodeToString(imageBytes, Base64.DEFAULT);
+
+            Log.d(TAG, "Base64 string length: " + base64Image.length() + " characters");
+            Log.d(TAG, "Compressed size: " + imageBytes.length + " bytes");
+
+            // Check if it's too large for Realtime Database (max ~10MB per node)
+            if (base64Image.length() > 5000000) { // 5MB limit for safety
+                Log.e(TAG, "Base64 string too large for Realtime Database");
+                Toast.makeText(this, "Image too large. Please take a smaller photo.", Toast.LENGTH_LONG).show();
+                return "";
+            }
+
+            return base64Image;
+
         } catch (Exception e) {
-            Log.e(TAG, "Error saving image: " + e.getMessage(), e);
-            return null;
+            Log.e(TAG, "Error converting image to Base64: " + e.getMessage(), e);
+            return "";
         }
     }
 
@@ -467,25 +424,31 @@ public class PostReviewActivity extends AppCompatActivity {
 
         // Disable button to prevent multiple clicks
         btnPostReview.setEnabled(false);
-        btnPostReview.setText("Posting...");
+        btnPostReview.setText("Processing...");
 
-        // Save image locally
-        Log.d(TAG, "Saving image to local storage...");
-        String localImageName = saveImageToLocalStorage();
+        // Convert image to Base64 and save review
+        processAndSaveReview(bookstoreName, reviewText, rating);
+    }
 
-        if (localImageName == null) {
-            Log.e(TAG, "Failed to save image locally");
-            Toast.makeText(this, "Failed to save image. Please try again.", Toast.LENGTH_SHORT).show();
+    private void processAndSaveReview(String bookstoreName, String reviewText, float rating) {
+        // Convert image to Base64
+        String base64Image = convertImageToBase64();
+
+        if (base64Image.isEmpty()) {
+            Toast.makeText(this, "Failed to process image. Try again.", Toast.LENGTH_SHORT).show();
             resetPostButton();
             return;
         }
 
-        // Save to Firebase Database
-        saveReviewToDatabase(bookstoreName, reviewText, rating, localImageName);
+        // Update button text
+        btnPostReview.setText("Posting...");
+
+        // Save to database with Base64 image
+        saveReviewToDatabase(bookstoreName, reviewText, rating, base64Image);
     }
 
     private void saveReviewToDatabase(String bookstoreName, String reviewText,
-                                      float rating, String imageFileName) {
+                                      float rating, String base64Image) {
         // Generate unique review ID using Firebase push()
         String reviewId = databaseReference.push().getKey();
 
@@ -510,14 +473,14 @@ public class PostReviewActivity extends AppCompatActivity {
             }
         }
 
-        Log.d(TAG, "=== SAVING TO FIREBASE ===");
+        Log.d(TAG, "=== SAVING TO FIREBASE DATABASE WITH BASE64 IMAGE ===");
         Log.d(TAG, "Review ID: " + reviewId);
         Log.d(TAG, "User ID: " + userId);
         Log.d(TAG, "User Name: " + userName);
         Log.d(TAG, "User Email: " + userEmail);
         Log.d(TAG, "Bookstore: " + bookstoreName);
         Log.d(TAG, "Rating: " + rating);
-        Log.d(TAG, "Image: " + imageFileName);
+        Log.d(TAG, "Base64 image length: " + (base64Image != null ? base64Image.length() : 0) + " chars");
         Log.d(TAG, "Timestamp: " + System.currentTimeMillis());
 
         // Create Review object
@@ -526,10 +489,10 @@ public class PostReviewActivity extends AppCompatActivity {
         review.setUserId(userId);
         review.setUserName(userName);
         review.setUserEmail(userEmail);
-        review.setBookstoreId("unknown"); // We don't have bookstore IDs yet
+        review.setBookstoreId("unknown");
         review.setBookstoreName(bookstoreName);
         review.setReviewText(reviewText);
-        review.setImageUrl(imageFileName);
+        review.setImageBase64(base64Image); // Store Base64 string
         review.setRating(rating);
         review.setTimestamp(System.currentTimeMillis());
 
@@ -539,11 +502,11 @@ public class PostReviewActivity extends AppCompatActivity {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
                         if (task.isSuccessful()) {
-                            Log.d(TAG, "✅ SUCCESS: Review saved to Firebase!");
+                            Log.d(TAG, "✅ SUCCESS: Review with image saved to Firebase Database!");
                             Log.d(TAG, "Review path: reviews/" + reviewId);
 
                             Toast.makeText(PostReviewActivity.this,
-                                    "✅ Review posted successfully!\nIt will appear in the community feed.",
+                                    "✅ Review with photo posted successfully!\nIt will appear in the community feed.",
                                     Toast.LENGTH_LONG).show();
 
                             // Clear form

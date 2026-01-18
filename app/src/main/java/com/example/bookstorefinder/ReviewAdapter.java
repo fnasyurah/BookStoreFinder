@@ -3,6 +3,7 @@ package com.example.bookstorefinder;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,7 +13,6 @@ import android.widget.RatingBar;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -67,48 +67,38 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
             holder.textTimestamp.setText("Just now");
         }
 
-        // Load and display image if available
-        loadReviewImage(holder.imageViewReview, review.getImageUrl());
-    }
-
-    private void loadReviewImage(ImageView imageView, String imageFileName) {
-        if (imageFileName != null && !imageFileName.isEmpty()) {
-            try {
-                Log.d(TAG, "Loading image: " + imageFileName);
-
-                // Get the file from internal storage
-                File storageDir = new File(context.getFilesDir(), "review_images");
-                File imageFile = new File(storageDir, imageFileName);
-
-                Log.d(TAG, "Image file path: " + imageFile.getAbsolutePath());
-                Log.d(TAG, "Image file exists: " + imageFile.exists());
-                Log.d(TAG, "Image file size: " + imageFile.length() + " bytes");
-
-                if (imageFile.exists()) {
-                    // Decode and display image
-                    BitmapFactory.Options options = new BitmapFactory.Options();
-                    options.inSampleSize = 2; // Reduce size for better performance
-
-                    Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath(), options);
-                    if (bitmap != null) {
-                        Log.d(TAG, "Bitmap loaded successfully. Size: " + bitmap.getWidth() + "x" + bitmap.getHeight());
-                        imageView.setImageBitmap(bitmap);
-                        imageView.setVisibility(View.VISIBLE);
-                    } else {
-                        Log.e(TAG, "Failed to decode bitmap");
-                        imageView.setVisibility(View.GONE);
-                    }
-                } else {
-                    Log.e(TAG, "Image file does not exist");
-                    imageView.setVisibility(View.GONE);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error loading image: " + e.getMessage(), e);
-                imageView.setVisibility(View.GONE);
+        // Load and display Base64 image
+        String base64Image = review.getImageBase64();
+        if (base64Image != null && !base64Image.isEmpty() && base64Image.length() > 100) {
+            Log.d(TAG, "Decoding Base64 image, length: " + base64Image.length());
+            Bitmap bitmap = decodeBase64ToBitmap(base64Image);
+            if (bitmap != null) {
+                holder.imageViewReview.setImageBitmap(bitmap);
+                holder.imageViewReview.setVisibility(View.VISIBLE);
+                Log.d(TAG, "Image displayed successfully");
+            } else {
+                holder.imageViewReview.setVisibility(View.GONE);
+                Log.e(TAG, "Failed to decode Base64 image");
             }
         } else {
-            Log.d(TAG, "No image file name provided");
-            imageView.setVisibility(View.GONE);
+            holder.imageViewReview.setVisibility(View.GONE);
+            Log.d(TAG, "No image or empty Base64 string");
+        }
+    }
+
+    // Convert Base64 string to Bitmap
+    private Bitmap decodeBase64ToBitmap(String base64String) {
+        try {
+            // Remove data URL prefix if present
+            if (base64String.contains(",")) {
+                base64String = base64String.substring(base64String.indexOf(",") + 1);
+            }
+
+            byte[] decodedBytes = Base64.decode(base64String, Base64.DEFAULT);
+            return BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+        } catch (Exception e) {
+            Log.e(TAG, "Error decoding Base64: " + e.getMessage());
+            return null;
         }
     }
 
@@ -120,7 +110,7 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
     static class ReviewViewHolder extends RecyclerView.ViewHolder {
         TextView textUserName, textUserEmail, textStoreName, textReview, textTimestamp;
         RatingBar ratingBar;
-        ImageView imageViewReview; // Add this
+        ImageView imageViewReview;
 
         public ReviewViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -130,7 +120,7 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
             textReview = itemView.findViewById(R.id.textReview);
             textTimestamp = itemView.findViewById(R.id.textTimestamp);
             ratingBar = itemView.findViewById(R.id.ratingBar);
-            imageViewReview = itemView.findViewById(R.id.imageViewReview); // Add this line
+            imageViewReview = itemView.findViewById(R.id.imageViewReview);
         }
     }
 }

@@ -60,11 +60,11 @@
             android:textColor="@color/purple_500"
             android:layout_marginBottom="8dp"/>
 
-        <!-- Review Image -->
+        <!-- Review Image (IMPORTANT: This must exist!) -->
         <ImageView
             android:id="@+id/imageViewReview"
             android:layout_width="match_parent"
-            android:layout_height="200dp"
+            android:layout_height="150dp"
             android:scaleType="centerCrop"
             android:background="@android:color/darker_gray"
             android:layout_marginBottom="8dp"

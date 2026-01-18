@@ -8,7 +8,7 @@ public class Review {
     private String bookstoreId;
     private String bookstoreName;
     private String reviewText;
-    private String imageUrl;
+    private String imageBase64; // CHANGED FROM imageUrl TO imageBase64
     private float rating;
     private long timestamp;
 
@@ -18,7 +18,7 @@ public class Review {
     // Constructor
     public Review(String id, String userId, String userName, String userEmail,
                   String bookstoreId, String bookstoreName, String reviewText,
-                  String imageUrl, float rating, long timestamp) {
+                  String imageBase64, float rating, long timestamp) {
         this.id = id;
         this.userId = userId;
         this.userName = userName;
@@ -26,7 +26,7 @@ public class Review {
         this.bookstoreId = bookstoreId;
         this.bookstoreName = bookstoreName;
         this.reviewText = reviewText;
-        this.imageUrl = imageUrl;
+        this.imageBase64 = imageBase64;
         this.rating = rating;
         this.timestamp = timestamp;
     }
@@ -53,8 +53,8 @@ public class Review {
     public String getReviewText() { return reviewText; }
     public void setReviewText(String reviewText) { this.reviewText = reviewText; }
 
-    public String getImageUrl() { return imageUrl; }
-    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public String getImageBase64() { return imageBase64; } // CHANGED
+    public void setImageBase64(String imageBase64) { this.imageBase64 = imageBase64; } // CHANGED
 
     public float getRating() { return rating; }
     public void setRating(float rating) { this.rating = rating; }
