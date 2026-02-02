@@ -18,6 +18,7 @@ play-services-maps = "18.2.0"
 play-services-location = "21.0.1"
 volley = "1.2.1"
 firebaseStorage = "22.0.1"
+firebaseFirestore = "26.1.0"
 
 
 [libraries]
@@ -37,8 +38,8 @@ play-services-maps = { group = "com.google.android.gms", name = "play-services-m
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "play-services-location" }
 volley = { module = "com.android.volley:volley", version.ref = "volley" }
 firebase-storage = { group = "com.google.firebase", name = "firebase-storage", version.ref = "firebaseStorage" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
-

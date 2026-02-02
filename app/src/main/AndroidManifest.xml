@@ -10,6 +10,10 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- For Android 12+ -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" /> <!-- Camera feature (required=false means app will work without camera) -->
     <uses-feature
         android:name="android.hardware.camera"
@@ -34,6 +38,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BookStoreFinder"
         tools:targetApi="31">
+
         <activity
             android:name=".AboutUsActivity"
             android:exported="false" />
@@ -90,12 +95,27 @@
         <activity
             android:name=".BookStoreDetailActivity"
             android:exported="false" /> <!-- Google Maps API Key -->
+        <service
+            android:name=".FirestoreNotificationListenerService"
+            android:exported="false"
+            tools:ignore="Instantiatable" />
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyBSZ5z9Ke3YiiaCKo_ZHGxtQVdbVGiXY2o" /> <!-- Add this inside <application> tag in AndroidManifest.xml -->
         <meta-data
             android:name="firebase_database_url"
             android:value="https://bookstorefinder-default-rtdb.firebaseio.com/" />
+        <activity
+            android:name=".NotificationActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+        <service
+            android:name=".MyFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

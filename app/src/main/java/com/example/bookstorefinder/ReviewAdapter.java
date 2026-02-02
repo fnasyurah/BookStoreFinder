@@ -11,8 +11,10 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.RatingBar;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -27,6 +29,7 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
     public ReviewAdapter(Context context, List<Review> reviewList) {
         this.context = context;
         this.reviewList = reviewList;
+        Log.d(TAG, "ReviewAdapter created with " + reviewList.size() + " reviews");
     }
 
     @NonNull
@@ -41,22 +44,38 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
     public void onBindViewHolder(@NonNull ReviewViewHolder holder, int position) {
         Review review = reviewList.get(position);
 
-        // Set user info
-        holder.textUserName.setText(review.getUserName());
-        holder.textUserEmail.setText(review.getUserEmail());
+        if (review == null) {
+            Log.w(TAG, "Review is null at position " + position);
+            return;
+        }
+
+        // Set user info with null checks
+        holder.textUserName.setText(review.getUserName() != null ? review.getUserName() : "Anonymous");
+        holder.textUserEmail.setText(review.getUserEmail() != null ? review.getUserEmail() : "");
 
         // Set bookstore info
         if (review.getBookstoreName() != null && !review.getBookstoreName().isEmpty()) {
             holder.textStoreName.setText("📍 " + review.getBookstoreName());
+            holder.textStoreName.setVisibility(View.VISIBLE);
         } else {
             holder.textStoreName.setText("📍 Unknown Bookstore");
+            holder.textStoreName.setVisibility(View.VISIBLE);
         }
 
         // Set review text
-        holder.textReview.setText(review.getReviewText());
+        if (review.getReviewText() != null && !review.getReviewText().isEmpty()) {
+            holder.textReview.setText(review.getReviewText());
+            holder.textReview.setVisibility(View.VISIBLE);
+        } else {
+            holder.textReview.setText("No review text provided");
+            holder.textReview.setVisibility(View.VISIBLE);
+        }
 
-        // Set rating
-        holder.ratingBar.setRating(review.getRating());
+        // Set rating - ensure it's within 0-5 range
+        float rating = review.getRating();
+        if (rating < 0) rating = 0;
+        if (rating > 5) rating = 5;
+        holder.ratingBar.setRating(rating);
 
         // Format timestamp
         if (review.getTimestamp() > 0) {
@@ -71,14 +90,19 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
         String base64Image = review.getImageBase64();
         if (base64Image != null && !base64Image.isEmpty() && base64Image.length() > 100) {
             Log.d(TAG, "Decoding Base64 image, length: " + base64Image.length());
-            Bitmap bitmap = decodeBase64ToBitmap(base64Image);
-            if (bitmap != null) {
-                holder.imageViewReview.setImageBitmap(bitmap);
-                holder.imageViewReview.setVisibility(View.VISIBLE);
-                Log.d(TAG, "Image displayed successfully");
-            } else {
+            try {
+                Bitmap bitmap = decodeBase64ToBitmap(base64Image);
+                if (bitmap != null) {
+                    holder.imageViewReview.setImageBitmap(bitmap);
+                    holder.imageViewReview.setVisibility(View.VISIBLE);
+                    Log.d(TAG, "Image displayed successfully");
+                } else {
+                    holder.imageViewReview.setVisibility(View.GONE);
+                    Log.e(TAG, "Failed to decode Base64 image - bitmap is null");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error decoding image: " + e.getMessage());
                 holder.imageViewReview.setVisibility(View.GONE);
-                Log.e(TAG, "Failed to decode Base64 image");
             }
         } else {
             holder.imageViewReview.setVisibility(View.GONE);
@@ -86,16 +110,41 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
         }
     }
 
-    // Convert Base64 string to Bitmap
+    // Convert Base64 string to Bitmap with better error handling
     private Bitmap decodeBase64ToBitmap(String base64String) {
         try {
+            if (base64String == null || base64String.isEmpty()) {
+                Log.e(TAG, "Base64 string is null or empty");
+                return null;
+            }
+
             // Remove data URL prefix if present
             if (base64String.contains(",")) {
                 base64String = base64String.substring(base64String.indexOf(",") + 1);
             }
 
+            // Decode base64
             byte[] decodedBytes = Base64.decode(base64String, Base64.DEFAULT);
-            return BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+
+            // Check if decoded bytes are valid
+            if (decodedBytes == null || decodedBytes.length == 0) {
+                Log.e(TAG, "Decoded bytes are null or empty");
+                return null;
+            }
+
+            // Decode bitmap with options to prevent OutOfMemoryError
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = 2; // Reduce image size
+            options.inPreferredConfig = Bitmap.Config.RGB_565; // Use less memory
+
+            return BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length, options);
+
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "Invalid Base64 string: " + e.getMessage());
+            return null;
+        } catch (OutOfMemoryError e) {
+            Log.e(TAG, "Out of memory decoding image: " + e.getMessage());
+            return null;
         } catch (Exception e) {
             Log.e(TAG, "Error decoding Base64: " + e.getMessage());
             return null;
@@ -105,6 +154,14 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
     @Override
     public int getItemCount() {
         return reviewList.size();
+    }
+
+    // Update method to refresh data
+    public void updateReviews(List<Review> newReviews) {
+        this.reviewList.clear();
+        this.reviewList.addAll(newReviews);
+        notifyDataSetChanged();
+        Log.d(TAG, "Reviews updated: " + newReviews.size() + " items");
     }
 
     static class ReviewViewHolder extends RecyclerView.ViewHolder {

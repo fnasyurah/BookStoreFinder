@@ -1,6 +1,9 @@
 package com.example.bookstorefinder;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -8,7 +11,12 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -25,6 +33,9 @@ public class MainActivity extends AppCompatActivity {
     private ImageView btnLogoutIcon;
     private DatabaseReference userRef;
 
+    // CHANGED: Using FirestoreNotificationListenerService instead of FirestoreNotificationService
+    private FirestoreNotificationListenerService notificationService;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -40,6 +51,21 @@ public class MainActivity extends AppCompatActivity {
         btnReviews = findViewById(R.id.btnReviews);
         btnAbout = findViewById(R.id.btnAbout);
         btnLogoutIcon = findViewById(R.id.btnLogout);
+
+        // ==================== NOTIFICATION FIXES START ====================
+        // CHANGED: Get instance of FirestoreNotificationListenerService
+        notificationService = FirestoreNotificationListenerService.getInstance(this);
+
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null) {
+            // Start listening for Firestore notifications
+            notificationService.startListening();
+            Log.d("MainActivity", "✅ Notification listener started for user: " + currentUser.getUid());
+
+            // Check and request notification permission for Android 13+
+            checkNotificationPermission();
+        }
+        // ==================== NOTIFICATION FIXES END ====================
 
         // Check if username was passed from LoginActivity
         Intent intent = getIntent();
@@ -101,11 +127,77 @@ public class MainActivity extends AppCompatActivity {
         btnLogoutIcon.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // Stop listening for notifications
+                if (notificationService != null) {
+                    notificationService.stopListening();
+                    Log.d("MainActivity", "✅ Notification listener stopped");
+                }
+
                 mAuth.signOut();
                 startActivity(new Intent(MainActivity.this, LoginActivity.class));
                 finish();
             }
         });
+        // Find the notification button
+        ImageView btnNotification = findViewById(R.id.btnNotification); // Add this to your layout
+        btnNotification.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, NotificationActivity.class);
+                startActivity(intent);
+            }
+        });
+
+    }
+
+    // ==================== NEW NOTIFICATION PERMISSION METHOD ====================
+    private void checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+
+                // Show explanation dialog before requesting
+                if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                        Manifest.permission.POST_NOTIFICATIONS)) {
+
+                    new androidx.appcompat.app.AlertDialog.Builder(this)
+                            .setTitle("Notification Permission")
+                            .setMessage("This app needs notification permission to alert you when other users post reviews.")
+                            .setPositiveButton("OK", (dialog, which) -> {
+                                // Request permission after explanation
+                                ActivityCompat.requestPermissions(MainActivity.this,
+                                        new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                                        101);
+                            })
+                            .setNegativeButton("Cancel", null)
+                            .show();
+                } else {
+                    // Directly request permission
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                            101);
+                }
+            } else {
+                Log.d("MainActivity", "Notification permission already granted");
+            }
+        }
+    }
+
+    // ==================== HANDLE PERMISSION RESULT ====================
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == 101) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "✅ Notification permission granted", Toast.LENGTH_SHORT).show();
+                Log.d("MainActivity", "Notification permission granted by user");
+            } else {
+                Toast.makeText(this, "❌ Notification permission denied", Toast.LENGTH_SHORT).show();
+                Log.d("MainActivity", "Notification permission denied by user");
+            }
+        }
     }
 
     private void loadUserDataFromDatabase() {
@@ -155,5 +247,27 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         // Refresh user data when activity resumes
         loadUserDataFromDatabase();
+
+        // ==================== RESTART NOTIFICATION LISTENER ====================
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null && notificationService != null) {
+            notificationService.startListening();
+            Log.d("MainActivity", "Notification listener restarted on resume");
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Clean up notification listener
+        if (notificationService != null) {
+            notificationService.stopListening();
+            Log.d("MainActivity", "Notification listener stopped on destroy");
+        }
     }
 }

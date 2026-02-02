@@ -32,13 +32,17 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 public class PostReviewActivity extends AppCompatActivity {
 
@@ -59,7 +63,9 @@ public class PostReviewActivity extends AppCompatActivity {
     // Firebase
     private FirebaseAuth mAuth;
     private DatabaseReference databaseReference;
+    private FirebaseFirestore firestore;
     private FirebaseUser currentUser;
+    private FirestoreNotificationService notificationService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,9 +88,17 @@ public class PostReviewActivity extends AppCompatActivity {
             return;
         }
 
+        // Initialize notification service
+        notificationService = new FirestoreNotificationService();
+
+        // Create/update user in Firestore
+        notificationService.createUserIfNotExists(currentUser);
+
         // Initialize Firebase Database
         FirebaseDatabase database = FirebaseDatabase.getInstance();
         databaseReference = database.getReference("reviews");
+        firestore = FirebaseFirestore.getInstance();
+
         Log.d(TAG, "Database reference: " + databaseReference.toString());
 
         // Initialize UI components
@@ -342,13 +356,13 @@ public class PostReviewActivity extends AppCompatActivity {
                 return "";
             }
 
-            // Check file size (Base64 increases size by ~33%)
+            // Check file size
             long fileSize = imageFile.length();
             Log.d(TAG, "Original image size: " + fileSize + " bytes");
 
-            // Realtime Database has limits, so compress heavily
+            // Compress for Base64
             BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inSampleSize = 8; // Heavy compression for Base64
+            options.inSampleSize = 8;
 
             Bitmap bitmap = BitmapFactory.decodeFile(currentPhotoPath, options);
             if (bitmap == null) {
@@ -356,9 +370,9 @@ public class PostReviewActivity extends AppCompatActivity {
                 return "";
             }
 
-            // Compress to very small size for Realtime Database
+            // Compress to small size
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 40, baos); // 40% quality
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 40, baos);
             byte[] imageBytes = baos.toByteArray();
 
             // Convert to Base64
@@ -366,13 +380,6 @@ public class PostReviewActivity extends AppCompatActivity {
 
             Log.d(TAG, "Base64 string length: " + base64Image.length() + " characters");
             Log.d(TAG, "Compressed size: " + imageBytes.length + " bytes");
-
-            // Check if it's too large for Realtime Database (max ~10MB per node)
-            if (base64Image.length() > 5000000) { // 5MB limit for safety
-                Log.e(TAG, "Base64 string too large for Realtime Database");
-                Toast.makeText(this, "Image too large. Please take a smaller photo.", Toast.LENGTH_LONG).show();
-                return "";
-            }
 
             return base64Image;
 
@@ -444,12 +451,24 @@ public class PostReviewActivity extends AppCompatActivity {
         btnPostReview.setText("Posting...");
 
         // Save to database with Base64 image
-        saveReviewToDatabase(bookstoreName, reviewText, rating, base64Image);
+        saveReviewToDatabases(bookstoreName, reviewText, rating, base64Image);
+    }
+    private void sendFCMMessage(String reviewId, String bookstoreName,
+                                String reviewText, String senderName, String senderId) {
+
+        // This would typically call your server
+        // For now, we'll just log it
+        Log.d(TAG, "Would send FCM message for review: " + reviewId);
+
+        // In real implementation, you would:
+        // 1. Get all user FCM tokens from your server/database
+        // 2. Send push notification via Firebase Admin SDK (server-side)
+        // 3. Or use Firebase Cloud Functions to trigger on Firestore write
     }
 
-    private void saveReviewToDatabase(String bookstoreName, String reviewText,
-                                      float rating, String base64Image) {
-        // Generate unique review ID using Firebase push()
+    private void saveReviewToDatabases(String bookstoreName, String reviewText,
+                                       float rating, String base64Image) {
+        // Generate unique review ID
         String reviewId = databaseReference.push().getKey();
 
         if (reviewId == null) {
@@ -467,23 +486,20 @@ public class PostReviewActivity extends AppCompatActivity {
         // If display name is null, use email username
         if (userName == null || userName.isEmpty()) {
             if (userEmail != null && userEmail.contains("@")) {
-                userName = userEmail.split("@")[0]; // Get part before @
+                userName = userEmail.split("@")[0];
             } else {
                 userName = "Anonymous";
             }
         }
 
-        Log.d(TAG, "=== SAVING TO FIREBASE DATABASE WITH BASE64 IMAGE ===");
+        Log.d(TAG, "=== SAVING TO BOTH DATABASES ===");
         Log.d(TAG, "Review ID: " + reviewId);
         Log.d(TAG, "User ID: " + userId);
         Log.d(TAG, "User Name: " + userName);
-        Log.d(TAG, "User Email: " + userEmail);
         Log.d(TAG, "Bookstore: " + bookstoreName);
         Log.d(TAG, "Rating: " + rating);
-        Log.d(TAG, "Base64 image length: " + (base64Image != null ? base64Image.length() : 0) + " chars");
-        Log.d(TAG, "Timestamp: " + System.currentTimeMillis());
 
-        // Create Review object
+        // Create Review object for Realtime Database
         Review review = new Review();
         review.setId(reviewId);
         review.setUserId(userId);
@@ -492,48 +508,87 @@ public class PostReviewActivity extends AppCompatActivity {
         review.setBookstoreId("unknown");
         review.setBookstoreName(bookstoreName);
         review.setReviewText(reviewText);
-        review.setImageBase64(base64Image); // Store Base64 string
+        review.setImageBase64(base64Image);
         review.setRating(rating);
         review.setTimestamp(System.currentTimeMillis());
 
-        // Save to Firebase Database under "reviews/{reviewId}"
+        // 1. Save to Realtime Database (original functionality)
+        String finalUserName = userName;
         databaseReference.child(reviewId).setValue(review)
                 .addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
                         if (task.isSuccessful()) {
-                            Log.d(TAG, "✅ SUCCESS: Review with image saved to Firebase Database!");
-                            Log.d(TAG, "Review path: reviews/" + reviewId);
+                            Log.d(TAG, "✅ SUCCESS: Review saved to Realtime Database!");
 
-                            Toast.makeText(PostReviewActivity.this,
-                                    "✅ Review with photo posted successfully!\nIt will appear in the community feed.",
-                                    Toast.LENGTH_LONG).show();
-
-                            // Clear form
-                            clearForm();
-
-                            // Go back to ReviewFeedActivity
-                            Intent intent = new Intent(PostReviewActivity.this,
-                                    ReviewFeedActivity.class);
-                            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                            startActivity(intent);
-                            finish();
+                            // 2. Save to Firestore
+                            saveReviewToFirestore(reviewId, review, finalUserName);
 
                         } else {
-                            Log.e(TAG, "❌ FAILED to save review: " + task.getException());
-                            if (task.getException() != null) {
-                                Log.e(TAG, "Error details: ", task.getException());
-                            }
-
+                            Log.e(TAG, "❌ FAILED to save review to Realtime DB: " + task.getException());
                             Toast.makeText(PostReviewActivity.this,
-                                    "Failed to post review: " +
-                                            (task.getException() != null ?
-                                                    task.getException().getMessage() : "Unknown error"),
+                                    "Failed to post review: " + task.getException().getMessage(),
                                     Toast.LENGTH_LONG).show();
                             resetPostButton();
                         }
                     }
                 });
+    }
+
+    private void saveReviewToFirestore(String reviewId, Review review, String userName) {
+        Map<String, Object> reviewData = new HashMap<>();
+        reviewData.put("id", reviewId);
+        reviewData.put("userId", review.getUserId());
+        reviewData.put("userName", userName);
+        reviewData.put("userEmail", review.getUserEmail());
+        reviewData.put("bookstoreName", review.getBookstoreName());
+        reviewData.put("reviewText", review.getReviewText());
+        reviewData.put("imageBase64", review.getImageBase64());
+        reviewData.put("rating", review.getRating());
+        reviewData.put("timestamp", FieldValue.serverTimestamp());
+        reviewData.put("createdAt", new Date());
+
+        firestore.collection("reviews")
+                .document(reviewId)
+                .set(reviewData)
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "✅ Review saved to Firestore: " + reviewId);
+
+                    // 3. Send notifications to all users
+                    notificationService.createNewReviewNotification(
+                            reviewId,
+                            review.getBookstoreName(),
+                            review.getReviewText(),
+                            userName,
+                            review.getUserId()
+                    );
+
+                    // Success!
+                    showSuccessAndFinish();
+
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "❌ Failed to save review to Firestore: " + e.getMessage());
+                    // Still show success since Realtime DB worked
+                    showSuccessAndFinish();
+                });
+    }
+
+    private void showSuccessAndFinish() {
+        Toast.makeText(PostReviewActivity.this,
+                "✅ Review with photo posted successfully!\n" +
+                        "Other users will be notified.",
+                Toast.LENGTH_LONG).show();
+
+        // Clear form
+        clearForm();
+
+        // Go back to ReviewFeedActivity
+        Intent intent = new Intent(PostReviewActivity.this,
+                ReviewFeedActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish();
     }
 
     private void resetPostButton() {

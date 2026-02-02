@@ -272,6 +272,7 @@ public class NearbyStoresActivity extends AppCompatActivity
 
         Log.d("BookstoreFinder", "Searching bookstores at: " + userLat + "," + userLng);
 
+        
         // Make API request using Volley
         JsonObjectRequest request = new JsonObjectRequest(
                 Request.Method.GET, url, null,
@@ -291,6 +292,7 @@ public class NearbyStoresActivity extends AppCompatActivity
                                     .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
                                     .snippet("Your current location"));
                         }
+
 
                         // Parse response
                         String status = response.getString("status");
@@ -493,6 +495,7 @@ public class NearbyStoresActivity extends AppCompatActivity
             }
         }
     }
+
 
     // Handle back button press
     @Override
