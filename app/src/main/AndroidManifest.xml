@@ -101,7 +101,7 @@
             tools:ignore="Instantiatable" />
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyBSZ5z9Ke3YiiaCKo_ZHGxtQVdbVGiXY2o" /> <!-- Add this inside <application> tag in AndroidManifest.xml -->
+            android:value="API_KEY" /> <!-- Add this inside <application> tag in AndroidManifest.xml -->
         <meta-data
             android:name="firebase_database_url"
             android:value="https://bookstorefinder-default-rtdb.firebaseio.com/" />

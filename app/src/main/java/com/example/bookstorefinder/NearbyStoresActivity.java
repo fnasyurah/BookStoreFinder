@@ -49,8 +49,8 @@ public class NearbyStoresActivity extends AppCompatActivity
     private FusedLocationProviderClient fusedLocationClient;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
 
-    // Google Places API Key (Use your Maps API key)
-    private static final String PLACES_API_KEY = "AIzaSyBSZ5z9Ke3YiiaCKo_ZHGxtQVdbVGiXY2o";
+    // Google Places API Key
+    private static final String PLACES_API_KEY = "API_KEY";
 
     // UI Components
     private EditText editTextSearch;
